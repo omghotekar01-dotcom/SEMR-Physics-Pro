@@ -1,0 +1,12 @@
+torch>=2.0.0
+torchvision
+pytorch-wavelets
+kornia
+opencv-python
+scikit-image
+matplotlib
+tqdm
+tensorboard
+gradio
+onnx
+onnxruntime
