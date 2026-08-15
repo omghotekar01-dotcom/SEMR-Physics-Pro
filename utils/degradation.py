@@ -1,6 +1,6 @@
 import numpy as np, cv2
 
-def generate_sem_pair(clean, scale=4):
+def generate_sem_pair(clean, scale=2):
     # clean: uint8 or float [0,1]
     clean = clean.astype(np.float32)
     k = np.random.uniform(10, 50)

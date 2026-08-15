@@ -5,7 +5,7 @@ import cv2
 from models.semr_physics_pro import SEMRPhysicsPro
 
 device = torch.device('cpu')
-model = SEMRPhysicsPro(scale=4, dim=8, num_blocks=[2,2,2,2], heads=2).to(device)
+model = SEMRPhysicsPro(scale=2, dim=12, num_blocks=[2,2,2,2], heads=4).to(device)
 model.load_state_dict(torch.load('pretrained/best_light.pth', map_location=device))
 model.eval()
 
@@ -19,7 +19,7 @@ def restore(image):
         img = img.astype(np.float32) / 255.0
 
         # Resize to 64x64 (model input)
-        lr = cv2.resize(img, (64, 64), interpolation=cv2.INTER_CUBIC)
+        lr = cv2.resize(img, (128, 128), interpolation=cv2.INTER_CUBIC)
         lr_t = torch.from_numpy(lr).float().unsqueeze(0).unsqueeze(0)  # (1,1,64,64)
 
         with torch.no_grad():

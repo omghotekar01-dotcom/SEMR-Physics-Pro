@@ -45,14 +45,24 @@ class SEMRPhysicsPro(nn.Module):
             in_dim = out_dim
 
         # ---- Super-resolution head ----
-        self.sr_head = nn.Sequential(
-            nn.Conv2d(in_dim, dim*4, 3, 1, 1),
-            nn.PixelShuffle(2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(dim, dim*4, 3, 1, 1),
-            nn.PixelShuffle(2),
-            nn.Conv2d(dim, 1, 3, 1, 1)
-        )
+        if scale == 2:
+            self.sr_head = nn.Sequential(
+                nn.Conv2d(in_dim, dim*4, 3, 1, 1),
+                nn.PixelShuffle(2),
+                nn.Conv2d(dim, 1, 3, 1, 1)
+            )
+        elif scale == 4:
+            self.sr_head = nn.Sequential(
+                nn.Conv2d(in_dim, dim*4, 3, 1, 1),
+                nn.PixelShuffle(2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(dim, dim*4, 3, 1, 1),
+                nn.PixelShuffle(2),
+                nn.Conv2d(dim, 1, 3, 1, 1)
+            )
+        else:
+            raise ValueError(f"Unsupported scale factor: {scale}. Only 2 or 4 are supported.")
+
         self.uncertainty_head = UncertaintyHead(in_dim)
 
     def forward(self, noisy_lr):

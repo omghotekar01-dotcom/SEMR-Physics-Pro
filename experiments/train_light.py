@@ -1,4 +1,7 @@
-import torch, torch.optim as optim, os, time
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import torch, torch.optim as optim, time
 from torch.utils.data import DataLoader
 from models.semr_physics_pro import SEMRPhysicsPro
 from losses.semr_loss import SEMRLoss
@@ -7,13 +10,13 @@ from utils.dataset import SEMDataset, create_clean_shapes
 def train():
     device = torch.device('cpu')
     print("Building tiny model...")
-    model = SEMRPhysicsPro(scale=4, dim=8, num_blocks=[2,2,2,2], heads=2).to(device)
+    model = SEMRPhysicsPro(scale=2, dim=12, num_blocks=[2,2,2,2], heads=4).to(device)
     model.train()
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Model parameters: {total_params:,}")
 
     print("Generating 20 training images (size 256)...")
-    clean_imgs = create_clean_shapes(num=20, size=256)   # clean HR = 256, LR = 64
+    clean_imgs = create_clean_shapes(num=20, size=256)
     dataset = SEMDataset(clean_imgs, scale=4)
     loader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=0)
 
