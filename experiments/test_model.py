@@ -4,12 +4,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import torch
 from models.semr_physics_pro import SEMRPhysicsPro
 
-print("Creating tiny model...")
+print("Creating tiny 2x model...")
 model = SEMRPhysicsPro(scale=2, dim=12, num_blocks=[2,2,2,2], heads=4)
 model.eval()
 
-# Use 64×64 LR → 256×256 HR (large enough for ms‑ssim)
-dummy_lr = torch.randn(1, 1, 64, 64)
+# For 2x SR, input LR should be half the HR size:
+# LR = 128x128 → HR = 256x256
+dummy_lr = torch.randn(1, 1, 128, 128)
 dummy_hr = torch.randn(1, 1, 256, 256)
 
 print("Forward pass...")

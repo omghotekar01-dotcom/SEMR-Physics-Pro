@@ -19,7 +19,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 # Load model once at startup
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = SEMRPhysicsPro(scale=2, dim=12, num_blocks=[2,2,2,2], heads=4).to(device)
-model.load_state_dict(torch.load('../pretrained/best_light.pth', map_location=device))
+model.load_state_dict(torch.load('/pretrained/best_scale2.pth', map_location=device))
 model.eval()
 
 UPLOAD_DIR = "uploads"
@@ -39,7 +39,7 @@ async def restore_image(file: UploadFile = File(...)):
     # Load and preprocess
     img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.0
     # Resize to model input size (64x64)
-    lr = cv2.resize(img, (64, 64), interpolation=cv2.INTER_CUBIC)
+    lr = cv2.resize(img, (128, 128), interpolation=cv2.INTER_CUBIC)
     lr_t = torch.from_numpy(lr).unsqueeze(0).unsqueeze(0).to(device)
 
     t0 = time.time()

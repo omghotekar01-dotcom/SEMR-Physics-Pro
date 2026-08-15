@@ -6,7 +6,7 @@ from models.semr_physics_pro import SEMRPhysicsPro
 
 device = torch.device('cpu')
 model = SEMRPhysicsPro(scale=2, dim=12, num_blocks=[2,2,2,2], heads=4).to(device)
-model.load_state_dict(torch.load('pretrained/best_light.pth', map_location=device))
+model.load_state_dict(torch.load('pretrained/best_scale2.pth', map_location=device))
 model.eval()
 
 def restore(image):
