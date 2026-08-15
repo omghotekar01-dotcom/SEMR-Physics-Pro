@@ -11,23 +11,19 @@ from losses.semr_loss import SEMRLoss
 from utils.dataset import SEMDataset, create_clean_shapes
 
 def train():
-    # ------------------ Device selection ------------------
     if torch.cuda.is_available():
         device = torch.device('cuda')
-        print(f"✅ GPU detected: {torch.cuda.get_device_name(0)}")
+        print(f"GPU detected: {torch.cuda.get_device_name(0)}")
     else:
         device = torch.device('cpu')
-        print("⚠️ GPU not available, using CPU (slow but will show progress).")
+        print("GPU not available, using CPU.")
 
-    # ------------------ Model ------------------
-    print("Building 2× super‑resolution model...")
+    print("Building 2x super-resolution model...")
     model = SEMRPhysicsPro(scale=2, dim=12, num_blocks=[2,2,2,2], heads=4).to(device)
     model.train()
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Model parameters: {total_params:,}")
 
-    # ------------------ Data ------------------
-    print("Generating 50 synthetic training images (HR 256×256, LR 128×128)...")
     clean_imgs = create_clean_shapes(num=50, size=256)
     dataset = SEMDataset(clean_imgs, scale=2)
     loader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)  # 0 for Windows safety
@@ -35,12 +31,11 @@ def train():
     optimizer = optim.AdamW(model.parameters(), lr=2e-4)
     loss_fn = SEMRLoss(w_pix=1.0, w_ssim=0.0, w_grad=0.3, w_phys=0.1, w_unc=0.0).to(device)
 
-    # Optional: mixed precision for GPU speed
     use_amp = device.type == 'cuda'
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
     epochs = 10
-    print(f"🚀 Starting {epochs}‑epoch training...\n")
+    print(f"Starting {epochs}-epoch training...\n")
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -67,8 +62,6 @@ def train():
                 optimizer.step()
 
             epoch_loss += loss.item()
-
-            # Update progress bar with current loss
             pbar.set_postfix({'loss': f'{loss.item():.4f}'})
 
         avg_loss = epoch_loss / len(loader)
@@ -77,7 +70,7 @@ def train():
 
     os.makedirs('pretrained', exist_ok=True)
     torch.save(model.state_dict(), 'pretrained/best_scale2.pth')
-    print("✅ Training finished. Model saved to pretrained/best_scale2.pth")
+    print("Training finished. Model saved to pretrained/best_scale2.pth")
 
 if __name__ == '__main__':
     train()

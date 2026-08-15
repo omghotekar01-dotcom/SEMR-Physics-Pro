@@ -11,19 +11,15 @@ def train():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
 
-    # Bigger model: dim=32, 3 encoder levels
     model = SEMRPhysicsPro(scale=4, dim=32, num_blocks=[4,4,4,4], heads=4).to(device)
     model.train()
     print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-    # More diverse training data: 200 images of size 256
-    print("Generating 200 training images...")
     clean_imgs = create_clean_shapes(num=200, size=256)
     dataset = SEMDataset(clean_imgs, scale=4)
     loader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=2 if device.type=='cuda' else 0)
 
     optimizer = optim.AdamW(model.parameters(), lr=2e-4)
-    # Start with all loss components on (no curriculum)
     loss_fn = SEMRLoss(1.0, 0.3, 0.2, 0.1, 0.05).to(device)
 
     epochs = 20
@@ -47,7 +43,7 @@ def train():
 
     os.makedirs('pretrained', exist_ok=True)
     torch.save(model.state_dict(), 'pretrained/best_improved.pth')
-    print("✅ Improved model saved.")
+    print("Improved model saved.")
 
 if __name__ == '__main__':
     train()

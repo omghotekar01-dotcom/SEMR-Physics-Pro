@@ -9,13 +9,12 @@ from utils.dataset import SEMDataset, create_clean_shapes
 
 def train():
     device = torch.device('cpu')
-    print("Building tiny model...")
+    print("Building model...")
     model = SEMRPhysicsPro(scale=2, dim=12, num_blocks=[2,2,2,2], heads=4).to(device)
     model.train()
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Model parameters: {total_params:,}")
 
-    print("Generating 20 training images (size 256)...")
     clean_imgs = create_clean_shapes(num=20, size=256)
     dataset = SEMDataset(clean_imgs, scale=4)
     loader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=0)
@@ -23,7 +22,7 @@ def train():
     optimizer = optim.AdamW(model.parameters(), lr=2e-4)
     loss_fn = SEMRLoss(1.0, 0.5, 0.1, 0.1, 0.0).to(device)
 
-    print("🚀 Starting 5-epoch training...\n")
+    print("Starting training...\n")
     for epoch in range(5):
         epoch_loss = 0.0
         t0 = time.time()
@@ -42,7 +41,7 @@ def train():
 
     os.makedirs('pretrained', exist_ok=True)
     torch.save(model.state_dict(), 'pretrained/best_light.pth')
-    print("✅ Training finished. Model saved.")
+    print("Training finished. Model saved.")
 
 if __name__ == '__main__':
     train()

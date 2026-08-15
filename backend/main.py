@@ -5,18 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 import torch, numpy as np, cv2
 from PIL import Image
 
-# Add parent to path so we can import our model
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from models.semr_physics_pro import SEMRPhysicsPro
 
 app = FastAPI(title="SEMR-Physics Pro API")
-
-# Allow requests from React dev server
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-
-# Load model once at startup
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = SEMRPhysicsPro(scale=2, dim=12, num_blocks=[2,2,2,2], heads=4).to(device)
 model.load_state_dict(torch.load('/pretrained/best_scale2.pth', map_location=device))
@@ -29,16 +24,13 @@ os.makedirs(RESULT_DIR, exist_ok=True)
 
 @app.post("/restore")
 async def restore_image(file: UploadFile = File(...)):
-    # Save uploaded file
     file_ext = file.filename.split('.')[-1]
     unique_name = f"{uuid.uuid4()}.{file_ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
     with open(file_path, "wb") as f:
         f.write(await file.read())
 
-    # Load and preprocess
     img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.0
-    # Resize to model input size (64x64)
     lr = cv2.resize(img, (128, 128), interpolation=cv2.INTER_CUBIC)
     lr_t = torch.from_numpy(lr).unsqueeze(0).unsqueeze(0).to(device)
 
@@ -51,12 +43,9 @@ async def restore_image(file: UploadFile = File(...)):
     hr = np.clip(hr, 0, 1)
     uncertainty = uncertainty.squeeze().cpu().numpy()
 
-    # Resize back to original dimensions
     orig_h, orig_w = img.shape
     hr_large = cv2.resize(hr, (orig_w, orig_h))
     unc_large = cv2.resize(uncertainty, (orig_w, orig_h))
-
-    # Save results
     hr_path = os.path.join(RESULT_DIR, f"restored_{unique_name}")
     unc_path = os.path.join(RESULT_DIR, f"uncertainty_{unique_name}")
     cv2.imwrite(hr_path, (hr_large * 255).astype(np.uint8))

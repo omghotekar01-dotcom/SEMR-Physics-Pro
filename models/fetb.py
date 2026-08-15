@@ -27,26 +27,22 @@ class FETB(nn.Module):
     def forward(self, x, sigma_f=None):
         B, C, H, W = x.shape
 
-        # Spatial branch: depthwise conv + pointwise conv with residual
         x_identity = x
         x_norm = self.norm1(x.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         x_spatial = self.conv1(x_norm)
         x_spatial = self.conv2(x_spatial)
         x_spatial = x_identity + x_spatial
 
-        # Feed-forward network
         x_norm2 = self.norm2(x_spatial.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         x_ffn = self.ffn(x_norm2)
         x_spatial = x_spatial + x_ffn
 
-        # Frequency branch (wavelet)
         yl, yh = self.dwt(x)
         yh_cat = torch.cat([yh[0], yh[1], yh[2]], dim=1)
         freq_feat = torch.cat([yl, yh_cat], dim=1)
         freq_out = self.freq_conv(freq_feat)
         freq_out = self.idwt(freq_out, yh)
 
-        # Adaptive fusion
         gate_in = torch.cat([x_spatial, freq_out], dim=1)
         gate = self.gate(gate_in)
         out = gate[:, 0:1] * x_spatial + gate[:, 1:2] * freq_out

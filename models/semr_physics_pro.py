@@ -14,7 +14,6 @@ class SEMRPhysicsPro(nn.Module):
         self.scn = SelfCalibrationHead()
         self.shallow = nn.Conv2d(inp_channels, dim, 3, 1, 1)
 
-        # ---- Encoder ----
         self.enc_blks = nn.ModuleList()
         self.downs = nn.ModuleList()
         in_dim = dim
@@ -24,10 +23,8 @@ class SEMRPhysicsPro(nn.Module):
             self.downs.append(nn.Conv2d(in_dim, in_dim*2, 2, 2))
             in_dim *= 2
 
-        # ---- Bottleneck ----
         self.bottleneck = nn.Sequential(*[FETB(in_dim, heads) for _ in range(num_blocks[-1])])
 
-        # ---- Decoder ----
         self.ups = nn.ModuleList()
         self.reduces = nn.ModuleList()
         self.dec_blks = nn.ModuleList()
@@ -38,13 +35,11 @@ class SEMRPhysicsPro(nn.Module):
                 nn.Conv2d(in_dim, out_dim * 4, 1, bias=False),
                 nn.PixelShuffle(2)
             ))
-            # after concat: 2*out_dim, reduce to out_dim
             self.reduces.append(nn.Conv2d(out_dim * 2, out_dim, 1, bias=False))
             n_blocks = num_blocks[-2 - i]
             self.dec_blks.append(nn.Sequential(*[FETB(out_dim, heads) for _ in range(n_blocks)]))
             in_dim = out_dim
 
-        # ---- Super-resolution head ----
         if scale == 2:
             self.sr_head = nn.Sequential(
                 nn.Conv2d(in_dim, dim*4, 3, 1, 1),
