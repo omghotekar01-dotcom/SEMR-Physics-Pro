@@ -1,199 +1,81 @@
-﻿# SEMR-Physics Pro
+# SEMR-Physics Pro
 
-**AI-Based Restoration of Degraded Images for Semiconductor Inspection**
+Image restoration experiments for semiconductor inspection, developed for the SEMICON India 2026 KLA challenge.
 
-SEMR-Physics Pro is a deep learning solution designed for the SEMICON India 2026 Hackathon (KLA Challenge) to restore degraded semiconductor inspection images using advanced neural network architectures. The model employs physics-informed learning with uncertainty quantification to achieve high-quality 2× super-resolution restoration.
+The project trains a PyTorch model to restore low-resolution, degraded grayscale images at 2× scale. It combines image-processing ideas with learned restoration and produces an uncertainty output alongside the restored image. Training examples in the supplied workflow are synthetic; results on real SEM images need separate evaluation.
 
-## Key Innovations
+## Approach
 
-### 1. Speckle-Aware Tokenization (SAT)
-Addresses semiconductor-specific noise patterns by applying logarithmic normalization to raw pixel intensities, making the model robust to multiplicative speckle noise inherent in SEM imaging.
+The model in `models/semr_physics_pro.py` combines:
 
-### 2. Frequency-Enhanced Transformer Block (FETB)
-A memory-efficient fusion of spatial and frequency domains:
-- **Spatial Branch**: Depthwise convolution with residual connections
-- **Frequency Branch**: Haar wavelet decomposition for multi-scale frequency analysis
-- **Adaptive Gating**: Learned fusion mechanism to balance spatial and frequency features
+- **Speckle-aware tokenization** to handle multiplicative noise.
+- **Frequency-enhanced transformer blocks** for spatial and wavelet-domain processing.
+- **A self-calibration head** for image-dependent degradation estimates.
+- **An uncertainty head** that produces a map alongside the restored image.
 
-### 3. Self-Calibrating HyperNetwork
-A lightweight network that estimates physics-aware hyperparameters (noise std dev, blur kernel width, speckle shape) from input images, enabling adaptive model behavior per image.
+The 2× training configuration uses a compact encoder/decoder with skip connections. Implementation details live in `models/`, `losses/`, and `utils/`.
 
-## Installation
+## Setup
 
-### Prerequisites
-- Python 3.10+
-- CUDA 11.8+ (optional, for GPU acceleration)
+Use Python with the dependencies in `requirements.txt`. A CUDA-capable GPU can accelerate training, but the scripts also support CPU execution.
 
-### Setup
-``ash
-# Clone or download the repository
+```powershell
+git clone https://github.com/omghotekar01-dotcom/SEMR-Physics-Pro.git
 cd SEMR-Physics-Pro
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
 
-# Create and activate virtual environment
-python -m venv venv
-.\venv\Scripts\activate  # On Windows
-# or
-source venv/bin/activate  # On Linux/macOS
+On Linux or macOS, activate the environment with `source .venv/bin/activate`.
 
-# Install dependencies
-pip install -r requirements.txt
-``
+## Run a restoration
 
-## How to Run
+The evaluator accepts a directory of input images and writes restored images to the selected output directory. By default it reads `pretrained/best_scale2.pth`.
 
-### 1. Quick Evaluation on Test Images
-Run inference on a folder of degraded semiconductor images:
+```bash
+python evaluate.py --test_dir ./input_images --output_dir ./restored_images
+```
 
-``ash
-python evaluate.py --test_dir <path_to_test_images> --output_dir <output_folder>
-``
+You can supply a different checkpoint using `--model_path`. Input images may be PNG, JPEG, BMP, or TIFF. Output filenames begin with `restored_`.
 
-**Example:**
-``ash
-python evaluate.py --test_dir ./sample_images --output_dir ./restored_images
-``
+For the interactive Gradio demo:
 
-**Output:**
-- Restored images saved with prefix estored_ to the output folder
-- Average inference time per image printed to console
-
-### 2. Interactive Demo with Gradio
-Launch a web-based interface for single image restoration and uncertainty visualization:
-
-``ash
+```bash
 python demo_app.py
-``
+```
 
-Then open your browser and navigate to the URL displayed in the terminal (typically http://localhost:7860).
+The demo loads `pretrained/best_scale2.pth` and opens a local interface for viewing the restored image and an uncertainty overlay. It requires the checkpoint file to be present.
 
-### 3. Retrain the Model
-To retrain the model with synthetic training data:
+## Training
 
-``ash
+To train the 2× configuration on the synthetic shape dataset:
+
+```bash
 python experiments/train_scale2.py
-``
+```
 
-**Training Details:**
-- **Epochs**: 10
-- **Batch Size**: 1 (Windows compatible)
-- **Learning Rate**: 2e-4
-- **Optimizer**: AdamW
-- **Model Configuration**: 2× super-resolution, dim=12, [2,2,2,2] blocks, 4 heads
-- **Output**: Saves model to pretrained/best_scale2.pth
+The script generates clean shapes, applies the dataset's degradation pipeline, trains for 10 epochs, and writes its checkpoint to `pretrained/best_scale2.pth`.
 
-**Note**: Training uses synthetically generated data (geometric shapes with SEM-realistic degradation). For production-grade results, provide real degraded/clean image pairs.
+Important files:
 
-## Model Architecture
+| Path | Description |
+| --- | --- |
+| `evaluate.py` | Batch inference and output-image export |
+| `demo_app.py` | Gradio comparison interface |
+| `experiments/train_scale2.py` | Synthetic-data training run |
+| `models/` | Restoration model and its component blocks |
+| `losses/` | Combined training loss |
+| `utils/` | Dataset and degradation utilities |
+| `metrics/` | Image-quality measurement helpers |
+| `backend/` | Separate web-service experiment |
 
-### Main Model: models/semr_physics_pro.py
-- **Input**: Grayscale LR image (1 channel)
-- **Output**: Restored HR image + uncertainty map (2×2 scale)
-- **Encoder-Decoder**: U-Net-like architecture with skip connections
-- **Bottleneck**: Multiple FETB blocks for deep feature processing
+## Interpretation and limitations
 
-### Pretrained Weights
-- **File**: pretrained/best_scale2.pth
-- **Configuration**: scale=2, dim=12, num_blocks=[2,2,2,2], heads=4
-- **Size**: ~8 MB
+Synthetic degradations are useful for controlled experiments, but they do not establish performance on real inspection data. Quality and timing depend on the input set, checkpoint, and hardware. Validate restored defects against real reference images before considering any inspection-related use.
 
-## Project Structure
+The uncertainty overlay is a model output, not a calibrated probability that a visual feature is correct. Keep source images and evaluation results when comparing checkpoints.
 
-``
-SEMR-Physics-Pro/
-├── README.md                       # This file
-├── requirements.txt                # Python dependencies
-├── evaluate.py                     # Standalone inference script
-├── train.py                        # Main training entry point
-├── demo_app.py                     # Gradio interactive demo
-├── demo.py                         # Alternative demo script
-├── export_onnx.py                  # Export model to ONNX format
-├── models/
-│   ├── semr_physics_pro.py        # Main model architecture
-│   ├── fetb.py                     # Frequency-Enhanced Transformer Block
-│   ├── speckle_token.py            # Speckle-Aware Tokenization
-│   ├── self_calibration.py         # Self-Calibrating HyperNetwork
-│   ├── uncertainty_head.py         # Uncertainty estimation head
-│   ├── wavelet.py                  # Haar DWT/IDWT implementations
-│   └── __init__.py
-├── losses/
-│   ├── semr_loss.py                # Combined loss function
-│   └── __init__.py
-├── utils/
-│   ├── dataset.py                  # Dataset and data generation utilities
-│   ├── degradation.py              # SEM image degradation simulation
-│   └── __init__.py
-├── metrics/
-│   ├── semiconductor_metrics.py    # Custom evaluation metrics
-│   └── __init__.py
-├── experiments/
-│   ├── train_scale2.py             # 2× SR training script
-│   ├── train_light.py              # Lightweight variant
-│   ├── train_better.py             # Improved variant
-│   ├── test_model.py               # Unit tests
-│   ├── test_sample.py              # Quick test on synthetic data
-│   └── __init__.py
-├── pretrained/
-│   ├── best_scale2.pth             # Pretrained weights (2× SR)
-│   └── best_light.pth              # Lightweight variant weights
-├── backend/                        # FastAPI backend for web service
-│   ├── main.py
-│   ├── uploads/
-│   ├── results/
-│   └── frontend/                   # React frontend
-└── results/                        # Sample output images
-``
+## Background
 
-## Loss Function
-
-The model optimizes a multi-component loss function:
-
-``
-Loss = w_pix * L_charb + w_ssim * L_ssim + w_grad * L_grad + w_phys * L_phys + w_unc * L_unc
-``
-
-Where:
-- **L_charb**: Charbonnier loss (robust pixel-wise error)
-- **L_ssim**: Structural similarity loss (perceptual quality)
-- **L_grad**: Gradient matching loss (edge preservation)
-- **L_phys**: Physics consistency loss (downsampling correspondence)
-- **L_unc**: Uncertainty-aware loss (epistemic uncertainty)
-
-Default weights: (1.0, 0.0, 0.3, 0.1, 0.0)
-
-## Performance
-
-- **Inference Speed**: ~50-100 ms per 256×256 image (CPU), ~10-20 ms (GPU)
-- **VRAM Usage**: ~200 MB (inference), ~1-2 GB (training)
-- **Model Size**: ~8 MB
-
-## Submission
-
-This project was developed for the **SEMICON India 2026 Hackathon** - **KLA Challenge: AI-Based Restoration of Degraded Images for Semiconductor Inspection**.
-
-### Demo
-[Video Demo Placeholder - To be added by contributor]
-
-## Requirements
-
-See equirements.txt for the complete list. Key dependencies:
-- 	orch>=2.0.0 - Deep learning framework
-- opencv-python>=4.5.0 - Image processing
-- 
-umpy>=1.20.0 - Numerical computing
-- scikit-image>=0.18.0 - Image metrics
-- pytorch_msssim>=0.2.1 - MS-SSIM loss
-- gradio>=6.0.0 - Interactive demo interface
-- astapi>=0.100.0 - REST API backend
-- 	qdm>=4.60.0 - Progress bars
-
-## License
-
-This project is provided as-is for the SEMICON India 2026 Hackathon.
-
-## Contact
-
-For questions or issues, please refer to the GitHub repository.
-
----
-
-**Last Updated**: February 2026
+This repository is a hackathon research prototype for semiconductor image restoration. It is provided as-is for experimentation and review.
